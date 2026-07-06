@@ -1,0 +1,40 @@
+name: Autogen Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install platform & build-tools
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Install xmlstarlet
+        run: sudo apt-get update && sudo apt-get install -y xmlstarlet
+
+      - name: Make scripts executable
+        run: |
+          chmod +x gradlew
+          chmod +x autogen/generate
+
+      - name: Run autogen
+        run: ./autogen/generate
+
+      - name: Upload built APKs/AABs
+        uses: actions/upload-artifact@v4
+        with:
+          name: autogen-output
+          path: autogen/output/
