@@ -1,0 +1,11 @@
+{
+  "layout": {
+    "left_stick": { "relX": 0.12, "relY": 0.82, "relRadius": 0.18 },
+    "buttons": [
+      { "id": "A", "relX": 0.88, "relY": 0.86, "relSize": 0.12 },
+      { "id": "B", "relX": 0.78, "relY": 0.95, "relSize": 0.10 },
+      { "id": "X", "relX": 0.78, "relY": 0.77, "relSize": 0.10 },
+      { "id": "Y", "relX": 0.68, "relY": 0.86, "relSize": 0.10 }
+    ]
+  }
+}

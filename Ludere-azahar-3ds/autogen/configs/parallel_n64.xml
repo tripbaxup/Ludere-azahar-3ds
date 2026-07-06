@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+  <string name="config_id">parallel_n64_template</string>
+  <string name="config_name">Nintendo 64 Game</string>
+  <string name="config_core">parallel_n64</string>
+  <bool name="config_load_bytes">false</bool>
+  <string name="config_variables">input_libretro_device_p1=257</string>
+  <integer name="config_fast_forward_multiplier">2</integer>
+  <bool name="config_fullscreen">true</bool>
+  <integer name="config_orientation">2</integer>
+  <bool name="config_gamepad">true</bool>
+  <bool name="config_force_touch_gamepad">false</bool>
+  <bool name="config_gamepad_haptic">true</bool>
+  <bool name="config_gamepad_a">true</bool>
+  <bool name="config_gamepad_b">true</bool>
+  <bool name="config_gamepad_x">true</bool>
+  <bool name="config_gamepad_y">true</bool>
+  <bool name="config_gamepad_start">true</bool>
+  <bool name="config_gamepad_select">true</bool>
+  <bool name="config_gamepad_l1">true</bool>
+  <bool name="config_gamepad_r1">true</bool>
+  <bool name="config_left_analog">true</bool>
+  <bool name="config_gamepad_c_up">true</bool>
+  <bool name="config_gamepad_c_down">true</bool>
+  <bool name="config_gamepad_c_left">true</bool>
+  <bool name="config_gamepad_c_right">true</bool>
+</resources>

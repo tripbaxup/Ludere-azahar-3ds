@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- azahar (3DS) touchscreen-first configuration.
+         The 3DS bottom screen is primarily controlled via touch/stylus, which
+         LibretroDroid passes through to the core automatically as pointer
+         input on the render surface - no extra wiring needed here.
+         The on-screen gamepad below covers the physical 3DS buttons
+         (A/B/X/Y, L/R, Start/Select, Circle Pad, D-Pad). -->
+
+    <!-- Core / app identifiers -->
+    <string name="config_id">azahar_3ds_template</string>
+    <string name="config_name">Nintendo 3DS (azahar)</string>
+    <string name="config_core">azahar</string>
+
+    <!-- Load ROM from memory? Leave false for large ROMs (3DS ROMs are large) -->
+    <bool name="config_load_bytes">false</bool>
+
+    <!-- Core variables (key=value comma separated) - add azahar-specific options here,
+         e.g. layout/resolution/region settings exposed by the core -->
+    <string name="config_variables"></string>
+
+    <!-- Presentation -->
+    <integer name="config_fast_forward_multiplier">2</integer>
+    <bool name="config_fullscreen">true</bool>
+    <!-- Portrait, since azahar renders the top+bottom 3DS screens stacked
+         vertically into a single frame -->
+    <integer name="config_orientation">1</integer>
+
+    <!-- Make this touchscreen-first: show virtual gamepad even when controllers are present -->
+    <bool name="config_gamepad">true</bool>
+    <bool name="config_force_touch_gamepad">true</bool>
+    <bool name="config_gamepad_haptic">true</bool>
+
+    <!-- On-screen gamepad layout for 3DS: A/B/X/Y face buttons, L/R shoulder buttons,
+         Start/Select, plus the Circle Pad as the primary left stick -->
+    <bool name="config_gamepad_a">true</bool>
+    <bool name="config_gamepad_b">true</bool>
+    <bool name="config_gamepad_x">true</bool>
+    <bool name="config_gamepad_y">true</bool>
+    <bool name="config_gamepad_start">true</bool>
+    <bool name="config_gamepad_select">true</bool>
+    <bool name="config_gamepad_l1">true</bool>
+    <bool name="config_gamepad_r1">true</bool>
+
+    <!-- Circle Pad is analog, like N64's stick, so keep this true -->
+    <bool name="config_left_analog">true</bool>
+
+    <!-- Input preset name your generator/actions can use to pick default keymaps -->
+    <string name="config_input_preset">n3ds_touch_default</string>
+</resources>

@@ -1,0 +1,162 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+}
+
+android {
+    namespace "com.draco.ludere"
+    compileSdk 35
+
+    defaultConfig {
+        def configId = new XmlParser()
+                .parse(file("${rootProject.projectDir}/app/src/main/res/values/config.xml"))
+                .string.find { it.@name == 'config_id' }?.text()
+
+        applicationId "com.trip.forward.${configId}"
+        minSdk 21
+        targetSdk 35
+        versionCode 1
+        versionName "1.0"
+
+        resConfigs "en"
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("${rootProject.projectDir}/ludere.jks")
+            storePassword "ludere"
+            keyAlias "key0"
+            keyPassword "ludere"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            signingConfig signingConfigs.release
+
+            proguardFiles(
+                    getDefaultProguardFile("proguard-android-optimize.txt"),
+                    "proguard-rules.pro"
+            )
+        }
+    }
+
+    splits {
+        abi {
+            enable true
+            reset()
+            // azahar (3DS core) is only provided/built for arm64-v8a here.
+            // Trim the other ABIs so the buildbot download step doesn't
+            // waste time failing for cores that don't exist for them.
+            include "arm64-v8a"
+            universalApk true
+        }
+    }
+
+    buildFeatures {
+        viewBinding true
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = "1.8"
+    }
+}
+
+def configValue = { id ->
+    def node = new XmlParser()
+            .parse(file("${rootProject.projectDir}/app/src/main/res/values/config.xml"))
+            .string.find { it.@name == id }
+
+    node?.text()
+}
+
+task prepareCore {
+    doLast {
+        // Only arm64-v8a is supported for the azahar core.
+        def abis = ["arm64-v8a"]
+
+        abis.each { abi ->
+            def coreName = configValue("config_core")
+
+            def jniAbiFolder = file("${rootProject.projectDir}/app/src/main/jniLibs/${abi}")
+
+            if (jniAbiFolder.exists() && jniAbiFolder.list()?.length > 0) {
+                println("✓ Core already exists for ${abi}, skipping...")
+                return
+            }
+
+            jniAbiFolder.mkdirs()
+
+            def downloadUrl = "https://buildbot.libretro.com/nightly/android/latest/${abi}/${coreName}_libretro_android.so.zip"
+            def zipPath = "${rootProject.projectDir}/app/src/main/jniLibs/${abi}/${coreName}.zip"
+
+            println("Downloading core for ${abi}...")
+            println(downloadUrl)
+
+            def process = new ProcessBuilder(
+                    "bash",
+                    "-c",
+                    "curl -fL# '${downloadUrl}' -o '${zipPath}'"
+            )
+                    .directory(rootProject.projectDir)
+                    .inheritIO()
+                    .start()
+
+            if (process.waitFor() != 0) {
+                println("⚠️ Core not available for ${abi} - skipping")
+                jniAbiFolder.deleteDir()
+                return
+            }
+
+            def zipFile = file(zipPath)
+
+            if (zipFile.exists()) {
+                println("✓ Downloaded core for ${abi}, extracting...")
+
+                copy {
+                    from zipTree(zipFile)
+                    into jniAbiFolder
+
+                    rename { filename ->
+                        filename.endsWith(".so") ? "libcore.so" : filename
+                    }
+                }
+
+                delete zipFile
+
+                println("✓ Extracted core for ${abi}")
+            }
+        }
+    }
+}
+
+preBuild.dependsOn prepareCore
+
+dependencies {
+    implementation fileTree(dir: "libs", include: ["*.jar"])
+
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+
+    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3"
+
+    implementation "androidx.core:core-ktx:1.13.1"
+    implementation "androidx.appcompat:appcompat:1.7.0"
+
+    implementation "androidx.activity:activity-ktx:1.9.1"
+
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.8.3"
+    implementation "androidx.lifecycle:lifecycle-livedata-ktx:2.8.3"
+    implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.8.3"
+
+    implementation "com.github.swordfish90:radialgamepad:0.6.0"
+    implementation "com.github.swordfish90:libretrodroid:0.7.0"
+
+    implementation "io.reactivex.rxjava2:rxandroid:2.1.1"
+}

@@ -1,0 +1,167 @@
+#!/usr/bin/env bash
+
+# Script path constants
+SCRIPT_PATH="$(readlink -f "$0")"
+SCRIPT_ROOT="$(dirname "$SCRIPT_PATH")"
+PROJECT_ROOT="$SCRIPT_ROOT/.."
+
+# Important project paths
+RES_DIR="$PROJECT_ROOT/app/src/main/res"
+RAW_DIR="$RES_DIR/raw"
+INPUT_DIR="$SCRIPT_ROOT/input"
+OUTPUT_DIR="$SCRIPT_ROOT/output"
+APK_OUTPUT_DIR="$PROJECT_ROOT/app/build/outputs/apk/release"
+AAB_OUTPUT_DIR="$PROJECT_ROOT/app/build/outputs/bundle/release"
+
+# Paths to mutable files
+CONFIG="$RES_DIR/values/config.xml"
+ROM="$RAW_DIR/rom"
+
+# Supported ABIs
+ABIS=(armeabi-v7a arm64-v8a x86 x86_64 universal)
+
+# Log a message
+log() {
+	echo -e "\e[36m > $*\e[0m"
+}
+
+# Log a non-fatal error
+err() {
+	echo -e "\e[31m > $*\e[0m"
+}
+
+# Run gradle commands from proper directory
+gradlew() {
+	cd "$PROJECT_ROOT" || return
+	bash gradlew "$@"
+}
+
+# Get a value from the config file given a name
+config_val() {
+	local name="$1"
+	grep "name=\"$1\"" "$CONFIG" | grep -o -P '(?<=>).*(?=</)'
+}
+
+# Replace a value in the config file given a name and a new value
+config_replace() {
+	local name="$1"
+	local value="$2"
+	xmlstarlet ed -L -u "/resources/string[@name='$name']" -v "$value" "$CONFIG"
+}
+
+# Make sure necessary folders are here
+prepare_env() {
+	local abi
+	# Create raw directory if missing
+	[[ ! -d "$RAW_DIR" ]] && mkdir -p "$RAW_DIR"
+
+	# Create output ABI folders
+	for abi in "${ABIS[@]}" aab
+	do
+		mkdir -p "$OUTPUT_DIR/$abi"
+	done
+}
+
+# Build one package
+compile() {
+	gradlew assembleRelease
+	gradlew bundleRelease
+}
+
+build_inputs() {
+	local subdir
+	local rom
+	local filename
+	local romname
+	local romid
+	local output_filename
+	local core
+
+	for subdir in "$INPUT_DIR"/*
+	do
+		# Skip invalid directories
+		[[ ! -f "$subdir/config.xml" ]] && continue
+
+		# Clean existing cores
+		log "Cleaning working directory..."
+		cp "$subdir/config.xml" "$CONFIG"
+		gradlew clean
+
+		for rom in "$subdir"/*
+		do
+			filename="$(basename -- "$rom")"
+
+			# Skip config file; not a ROM
+			[[ "$filename" == "config.xml" ]] && continue
+
+			# Escape issue characters
+			romname="${filename%.*}"
+			romname="$(xmlstarlet esc "$romname")"
+			romname="${romname//\"/\\\"}"
+			romname="${romname//\'/\\\'}"
+
+			# Alphanumeric id
+			romid="${romname// /_}"
+			romid="${romid//[^A-Za-z0-9_]/}"
+			romid="${romid,,}"
+
+			# Assert valid romid
+			if [[ ! "$romid" =~ ^[a-z] ]]
+			then
+				err "$romid must start with a letter! Skipping..."
+				continue
+			fi
+
+			# Update config with this info
+			config_replace "config_id" "$romid"
+			config_replace "config_name" "$romname"
+			core="$(config_val "config_core")"
+
+			# File name of output excluding extension
+			output_filename="${core}_${romid}"
+
+			# Skip build if already built
+			[[ -f "$OUTPUT_DIR/aab/$output_filename.aab" ]] && continue
+
+			# Copy rom to build directory
+			cp "$rom" "$ROM"
+
+			# Handle custom icon if provided in subdir (icon.png)
+			ICON_SRC="$subdir/icon.png"
+			if [ -f "$ICON_SRC" ]; then
+				log "Using custom icon.png"
+				for mipmap_dir in "$PROJECT_ROOT/app/src/main/res/mipmap-"*; do
+					if [ -d "$mipmap_dir" ]; then
+						cp "$ICON_SRC" "$mipmap_dir/ic_launcher.png"
+						cp "$ICON_SRC" "$mipmap_dir/ic_launcher_round.png" 2>/dev/null || true
+					fi
+				done
+			fi
+
+			log "----- BUILDING -----"
+			log "FILENAME:\t$filename..."
+			log "ROMNAME:\t$romname"
+			log "ROMID:\t$romid"
+			log "CORE:\t$core"
+
+			compile
+
+			log "Copying outputs..."
+
+			# Copy output APKs
+			for abi in "${ABIS[@]}"
+			do
+				cp "$APK_OUTPUT_DIR/app-$abi-release.apk" "$OUTPUT_DIR/$abi/$output_filename.apk"		
+			done
+
+			# Copy output aab
+			cp "$AAB_OUTPUT_DIR/app-release.aab" "$OUTPUT_DIR/aab/$output_filename.aab"
+		
+			log "Done!"
+			echo
+		done
+	done
+}
+
+prepare_env
+build_inputs
